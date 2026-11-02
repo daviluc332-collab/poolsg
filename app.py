@@ -516,6 +516,79 @@ def openapi():
     })
 
 
+def backbone_player():
+    data = request.get_json(silent=True) or {}
+    player_id = (
+        data.get("uniqueId")
+        or data.get("userId")
+        or data.get("deviceId")
+        or request.headers.get("X-User-Id")
+        or DEFAULT_PLAYER_ID
+    )
+    nickname = data.get("nickName") or data.get("nickname") or DEFAULT_NICKNAME
+    return player_payload(player_id, nickname)
+
+
+def backbone_auth_response():
+    player = backbone_player()
+    now = int(time.time())
+    return {
+        "success": True,
+        "responseCode": 200,
+        "accessToken": f"poolsg-access-{player['playerId']}",
+        "refreshToken": f"poolsg-refresh-{player['playerId']}",
+        "expireAt": now + 86400,
+        "user": player,
+        "data": player,
+        "player": player
+    }
+
+
+@app.route("/api/v1/ping", methods=["GET", "POST"])
+def backbone_ping():
+    return jsonify({"success": True, "status": "ok", "version": VERSION})
+
+
+@app.route("/api/v1/userConnect", methods=["GET", "POST"])
+def backbone_user_connect():
+    return jsonify(backbone_auth_response())
+
+
+@app.route("/api/v1/userLogin", methods=["GET", "POST"])
+def backbone_user_login():
+    return jsonify(backbone_auth_response())
+
+
+@app.route("/api/v1/userGet", methods=["GET", "POST"])
+def backbone_user_get():
+    player = backbone_player()
+    return jsonify({
+        "success": True,
+        "responseCode": 200,
+        "user": player,
+        "data": player,
+        "player": player
+    })
+
+
+@app.route("/api/v1/refreshAccessToken", methods=["GET", "POST"])
+def backbone_refresh_token():
+    return jsonify(backbone_auth_response())
+
+
+@app.route("/api/v1/<path:operation>", methods=["GET", "POST", "PUT", "DELETE"])
+def backbone_compatibility(operation):
+    # Keep the client from waiting forever on optional startup services.
+    return jsonify({
+        "success": True,
+        "responseCode": 200,
+        "operation": operation,
+        "data": [],
+        "items": [],
+        "version": VERSION
+    })
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
 
